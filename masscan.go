@@ -5,25 +5,32 @@ import (
 	"bytes"
 	"errors"
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"time"
 )
 
 type Masscan struct {
-	BinaryPath     string
-	Args           []string
-	Exclude        string
-	ExcludedFile   string
-	Ports          string
-	Ranges         string
-	Rate           string
-	MasscanOutfile string
-	ParsedOutfile  string
-	Result         []byte
-	canRunInternal bool
+	BinaryPath      string
+	Args            []string
+	Exclude         string
+	ExcludedFile    string
+	Ports           string
+	Ranges          string
+	Rate            string
+	MasscanOutfile  string
+	ParsedOutfile   string
+	Result          []byte
+	canRunInternal  bool
+	verifyOpenPorts bool
 }
 
+func (m *Masscan) VerifyPorts() {
+	m.verifyOpenPorts = true
+}
 func (m *Masscan) AllowInternalScan() {
 	m.canRunInternal = true
 }
@@ -116,18 +123,57 @@ func (m *Masscan) Parse() error {
 	}
 	defer ifp.Close()
 	scanner := bufio.NewScanner(ifp)
-	for scanner.Scan() {
-		if strings.HasPrefix(scanner.Text(), "#") {
-			continue
-		}
-		if strings.HasPrefix(scanner.Text(), "open") {
-			dat := strings.Split(scanner.Text(), " ")
-			if len(dat) > 3 {
-				f.WriteString(fmt.Sprintf("%s:%s\n", dat[3], dat[2]))
+	if !m.verifyOpenPorts {
+		for scanner.Scan() {
+			if strings.HasPrefix(scanner.Text(), "#") {
+				continue
+			}
+			if strings.HasPrefix(scanner.Text(), "open") {
+				dat := strings.Split(scanner.Text(), " ")
+				if len(dat) > 3 {
+					f.WriteString(fmt.Sprintf("%s:%s\n", dat[3], dat[2]))
+				}
 			}
 		}
 	}
+	if m.verifyOpenPorts {
+		var jobWg, resultWg sync.WaitGroup
+		jobChan := make(chan string)
+		resultChan := make(chan string)
+		for i := 0; i < 5; i++ {
+			jobWg.Add(1)
+			go func() {
+				doverification(jobChan, resultChan)
+				jobWg.Done()
+			}()
+		}
+		resultWg.Add(1)
+		go func() {
+			for r := range resultChan {
+				f.WriteString(fmt.Sprintf("%s\n", r))
+			}
+			resultWg.Done()
+		}()
 
+		go func() {
+			for scanner.Scan() {
+				if strings.HasPrefix(scanner.Text(), "#") {
+					continue
+				}
+				if strings.HasPrefix(scanner.Text(), "open") {
+					dat := strings.Split(scanner.Text(), " ")
+					if len(dat) > 3 {
+						target := fmt.Sprintf("%s:%s", dat[3], dat[2])
+						jobChan <- target
+					}
+				}
+			}
+			close(jobChan)
+		}()
+		jobWg.Wait()
+		close(resultChan)
+		resultWg.Wait()
+	}
 	return nil
 }
 func (m *Masscan) Clean() error {
@@ -141,9 +187,23 @@ func (m *Masscan) Clean() error {
 	}
 	return nil
 }
+func doverification(targets chan string, results chan string) {
+	for target := range targets {
+		conn, err := net.DialTimeout("tcp", target, 10*time.Second)
+
+		if err != nil {
+			fmt.Println(err)
+			continue
+		}
+
+		conn.Close()
+		results <- target
+	}
+}
 func New() *Masscan {
 	return &Masscan{
-		BinaryPath:     "/usr/local/bin/masscan",
-		canRunInternal: false,
+		BinaryPath:      "/usr/local/bin/masscan",
+		canRunInternal:  false,
+		verifyOpenPorts: false,
 	}
 }

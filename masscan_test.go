@@ -9,11 +9,11 @@ func TestMasscan(t *testing.T) {
 
 	m := New()
 
-	m.SetPorts("0-65535")
+	m.SetPorts("443")
 	m.SetMasscanOutfile("masscan.out")
 	m.SetParsedOutfile("parsed.out")
-	m.SetRanges("10.0.0.1")
-
+	m.SetRanges("167.172.121.62")
+	m.VerifyPorts()
 	m.SetRate("3000")
 
 	m.SetExclude("127.0.0.1")
