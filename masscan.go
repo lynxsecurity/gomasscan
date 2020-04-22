@@ -14,20 +14,24 @@ import (
 )
 
 type Masscan struct {
-	BinaryPath      string
-	Args            []string
-	Exclude         string
-	ExcludedFile    string
-	Ports           string
-	Ranges          string
-	Rate            string
-	MasscanOutfile  string
-	ParsedOutfile   string
-	Result          []byte
-	canRunInternal  bool
-	verifyOpenPorts bool
+	BinaryPath          string
+	Args                []string
+	Exclude             string
+	ExcludedFile        string
+	Ports               string
+	Ranges              string
+	Rate                string
+	MasscanOutfile      string
+	ParsedOutfile       string
+	Result              []byte
+	canRunInternal      bool
+	verifyOpenPorts     bool
+	verificationThreads int
 }
 
+func (m *Masscan) SetVerificationThreads(t int) {
+	m.verificationThreads = t
+}
 func (m *Masscan) VerifyPorts() {
 	m.verifyOpenPorts = true
 }
@@ -140,7 +144,11 @@ func (m *Masscan) Parse() error {
 		var jobWg, resultWg sync.WaitGroup
 		jobChan := make(chan string)
 		resultChan := make(chan string)
-		for i := 0; i < 5; i++ {
+		threads := 5
+		if m.verificationThreads > 0 {
+			threads = m.verificationThreads
+		}
+		for i := 0; i < threads; i++ {
 			jobWg.Add(1)
 			go func() {
 				doverification(jobChan, resultChan)
