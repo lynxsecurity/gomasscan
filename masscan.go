@@ -23,6 +23,7 @@ type Masscan struct {
 	Rate                string
 	MasscanOutfile      string
 	ParsedOutfile       string
+	InputFile           string
 	Result              []byte
 	canRunInternal      bool
 	verifyOpenPorts     bool
@@ -40,6 +41,9 @@ func (m *Masscan) AllowInternalScan() {
 }
 func (m *Masscan) SetBinaryPath(Path string) {
 	m.BinaryPath = Path
+}
+func (m *Masscan) SetInputFile(File string) {
+	m.InputFile = File
 }
 func (m *Masscan) SetMasscanOutfile(File string) {
 	m.MasscanOutfile = File
@@ -82,11 +86,12 @@ func (m *Masscan) Run() error {
 		m.Args = append(m.Args, m.ExcludedFile)
 	}
 	if m.Ranges != "" {
-		if !m.canRunInternal && IsInternal(m.Ranges) {
-			return fmt.Errorf("internal range specified, skipping masscan")
-		}
 		m.Args = append(m.Args, "--range")
 		m.Args = append(m.Args, m.Ranges)
+	}
+	if m.InputFile != "" {
+		m.Args = append(m.Args, "-iL")
+		m.Args = append(m.Args, m.InputFile)
 	}
 	if m.Ports != "" {
 		m.Args = append(m.Args, "-p")
