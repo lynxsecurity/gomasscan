@@ -3,6 +3,7 @@ package gomasscan
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -14,6 +15,7 @@ import (
 )
 
 type Masscan struct {
+	Ctx                 context.Context
 	BinaryPath          string
 	Args                []string
 	Exclude             string
@@ -41,6 +43,9 @@ func (m *Masscan) AllowInternalScan() {
 }
 func (m *Masscan) SetBinaryPath(Path string) {
 	m.BinaryPath = Path
+}
+func (m *Masscan) SetContext(Ctx context.Context) {
+	m.Ctx = Ctx
 }
 func (m *Masscan) SetInputFile(File string) {
 	m.InputFile = File
@@ -103,11 +108,17 @@ func (m *Masscan) Run() error {
 	}
 	m.Args = append(m.Args, "-oL")
 	m.Args = append(m.Args, m.MasscanOutfile)
-	cmd = exec.Command(m.BinaryPath, m.Args...)
+
+	if m.Ctx == nil {
+		m.Ctx = context.TODO()
+	}
+
+	cmd = exec.CommandContext(m.Ctx, m.BinaryPath, m.Args...)
 	cmd.Stdout = &outb
 	cmd.Stderr = &errs
 	err = cmd.Run()
 	if err != nil {
+		fmt.Println(err)
 		if errs.Len() > 0 {
 			return errors.New(errs.String())
 		}

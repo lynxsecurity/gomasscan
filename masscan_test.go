@@ -1,14 +1,17 @@
 package gomasscan
 
 import (
+	"context"
 	"log"
 	"testing"
 )
 
-func TestMasscan(t *testing.T) {
+func TestMasscanCtx(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 
 	m := New()
-
+	m.SetContext(ctx)
 	m.SetPorts("443")
 	m.SetMasscanOutfile("masscan.out")
 	m.SetParsedOutfile("parsed.out")
