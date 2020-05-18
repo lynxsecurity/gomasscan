@@ -15,10 +15,8 @@ func TestMasscanCtx(t *testing.T) {
 	m.SetPorts("443")
 	m.SetMasscanOutfile("masscan.out")
 	m.SetParsedOutfile("parsed.out")
-	m.SetRanges("167.172.121.62")
-	m.VerifyPorts()
+	m.SetRanges("rangeHere")
 	m.SetRate("3000")
-
 	m.SetExclude("127.0.0.1")
 
 	err := m.Run()

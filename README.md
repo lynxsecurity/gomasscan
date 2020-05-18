@@ -6,14 +6,14 @@ a golang wrapper around masscan, based on https://github.com/dean2021/go-masscan
 
 m := gomasscan.New()
 
+ctx, cancel := context.WithCancel(context.Background())
+defer cancel()
 m.SetPorts("0-65535")
-m.AllowInternalScan()
+m.SetContext(ctx)
 m.SetMasscanOutfile("masscan.out")
 m.SetParsedOutfile("parsed.out")
 m.SetRanges("10.0.0.1")
-
 m.SetRate("3000")
-
 m.SetExclude("127.0.0.1")
 
 err := m.Run()
